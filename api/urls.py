@@ -1,9 +1,13 @@
-# from django.urls import path
+from django.urls import path
 
-# from rest_framework.routers import SimpleRouter
+from rest_framework.routers import SimpleRouter
+
+from .views import ClienteViewSet, ContaViewSet, CartaoViewSet
 
 
 
-# router = SimpleRouter()
+router = SimpleRouter()
 
-# router.register()
+router.register('clientes', ClienteViewSet)
+router.register('contas', ContaViewSet)
+router.register('cartoes', CartaoViewSet)

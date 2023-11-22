@@ -13,9 +13,9 @@ class Cliente(Base):
     nome = models.CharField(max_length=100)
     foto = models.CharField(max_length=255)
     dataNascimento = models.DateField()
-    usuario = models.CharField(max_length=20)
+    usuario = models.CharField(max_length=20, unique=True)
     senha = models.CharField(max_length=30)
-    telefone = models.CharField(max_length=11)
+    telefone = models.CharField(max_length=11, unique=True)
 
     class Meta:
         verbose_name = 'Cliente'
@@ -27,6 +27,7 @@ class Cliente(Base):
 
 class Conta(Base):
     id_conta = models.AutoField(primary_key=True)
+    id_cliente = models.ForeignKey(Cliente, related_name="conta_cliente", on_delete=models.CASCADE)
     agencia = models.IntegerField('Agencia')
     conta = models.CharField(max_length=10)
     limite = models.DecimalField(max_digits=10, decimal_places=2)
@@ -40,6 +41,7 @@ class Conta(Base):
 
 class Cartao(Base):
     id_cartao = models.AutoField(primary_key=True)
+    id_conta = models.ForeignKey(Conta, related_name='conta_cartao', on_delete=models.CASCADE)
     numero = models.CharField(max_length=16)
     validade = models.DateField()
     cvv = models.IntegerField()
@@ -54,8 +56,9 @@ class Cartao(Base):
 
 class Movimentacao(Base):
     id_movimentacao = models.AutoField(primary_key=True)
-    id_cartao = models.ForeignKey(Cartao, related_name='movimentacoes_cartao', on_delete=models.CASCADE)
+    id_cartao = models.ForeignKey(Cartao, related_name='movimentacoes_cartao', on_delete=models.CASCADE, null=True, blank=True)
     id_conta = models.ForeignKey(Conta, related_name='movimentacoes_conta', on_delete=models.CASCADE)
+    id_conta_destino = models.ForeignKey(Conta, related_name='movimentacao_destino', on_delete=models.CASCADE, null=True, blank=True)
     valor = models.DecimalField(max_digits=10, decimal_places=2)
     dataMovimentacao = models.DateField(auto_now=True)
     tipo = models.CharField(max_length=15)
