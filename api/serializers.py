@@ -62,6 +62,7 @@ class MovimentacaoSerializer(serializers.ModelSerializer):
             'id_movimentacao',
             'id_cartao',
             'id_conta',
+            'id_conta_destino',
             'valor',
             'dataMovimentacao',
             'tipo',
@@ -73,6 +74,13 @@ class MovimentacaoSerializer(serializers.ModelSerializer):
 class EmprestimoSerializer(serializers.ModelSerializer):
 
     class Meta:
+
+        extra_kwargs = {
+            'juros': {'read_only':True},
+            'valor_parcela':{'read_only':True}
+        }
+
+
         model = Emprestimo
         fields = (
             'id_emprestimo',
@@ -80,9 +88,9 @@ class EmprestimoSerializer(serializers.ModelSerializer):
             'data_solicitacao',
             'valor_solicitado',
             'juros',
-            'nuemro_parcela',
-            'aprovado',
-            'data_aprovaco',
+            'quantidade_parcelas',
+            'valor_parcela',
+            'data_aprovacao',
             'observacao',
             'criacao',
             'atualizacao'

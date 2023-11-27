@@ -10,6 +10,7 @@ import random
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 import pytz
+from decimal import Decimal
 
 # Create your views here.
 
@@ -57,6 +58,43 @@ class ClienteViewSet(viewsets.ModelViewSet):
             return Response(data=clienteSerializer.data, status=status.HTTP_201_CREATED)
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
+class MovimentacaoViewSet(viewsets.ModelViewSet):
+    queryset = Movimentacao.objects.all()
+    serializer_class = MovimentacaoSerializer
+
+    def create(self, request, *args, **kwargs):
+        dados_movimentacao = request.data
+
+        movimentacao = Movimentacao(
+            valor = Decimal(dados_movimentacao['valor']),
+            tipo = dados_movimentacao['tipo']
+        )
+
+        if movimentacao.id_cartao is not None:
+            print("entrou no primeiro if")
+            movimentacao.id_cartao = dados_movimentacao['id_cartao']
+            movimentacao.id_conta = None
+            movimentacao.id_conta_destino = None
+        else:
+            print("entrou no else")
+            movimentacao.id_conta = Conta.objects.get(id_conta=dados_movimentacao['id_conta'])
+            movimentacao.id_conta_destino = Conta.objects.get(id_conta=dados_movimentacao['id_conta_destino'])
+
+            if movimentacao.valor >= movimentacao.id_conta.limite:
+                return Response(status=status.HTTP_400_BAD_REQUEST)
+            else:
+                print("caiu no if de movimentar o saldo")
+                movimentacao.id_conta.limite -=  movimentacao.valor
+                movimentacao.id_conta_destino.limite +=  movimentacao.valor
+
+            
+        movimentacaoSerializer = MovimentacaoSerializer(data=dados_movimentacao)
+        if movimentacaoSerializer.is_valid():
+            movimentacao.save()
+            movimentacao.id_conta.save()
+            movimentacao.id_conta_destino.save()    
+            return Response(status=status.HTTP_200_OK)
+        
 
 class CartaoViewSet(viewsets.ModelViewSet):
     queryset = Cartao.objects.all()
@@ -72,10 +110,47 @@ class EmprestimoViewSet(viewsets.ModelViewSet):
     queryset = Emprestimo.objects.all()
     serializer_class = EmprestimoSerializer
 
+    def create(self, request, *args, **kwargs):
+        dados_emprestimo = request.data
 
-class MovimentacaoViewSet(viewsets.ModelViewSet):
-    queryset = Movimentacao.objects.all()
-    serializer_class = MovimentacaoSerializer
+        emprestimo = Emprestimo(
+            id_conta=Conta.objects.get(id_conta=dados_emprestimo['id_conta']),
+            valor_solicitado = Decimal(dados_emprestimo['valor_solicitado']),
+            quantidade_parcelas = int(dados_emprestimo['quantidade_parcelas']),
+            observacao = dados_emprestimo['observacao']
+        )
+
+        if emprestimo.valor_solicitado >= 150*emprestimo.id_conta.limite:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+        else:
+            emprestimo.id_conta.limite += emprestimo.valor_solicitado
+            if emprestimo.quantidade_parcelas <= 12:
+                emprestimo.juros = Decimal(0.10)
+                
+            elif emprestimo.quantidade_parcelas <= 24:
+                emprestimo.juros = Decimal(0.15)
+
+            elif emprestimo.quantidade_parcelas <= 36:
+                emprestimo.juros = Decimal(0.20)
+                
+        parcela = emprestimo.valor_solicitado/emprestimo.quantidade_parcelas
+
+        juros_parcela = parcela*emprestimo.juros
+        juros_parcela += parcela
+
+        emprestimo.valor_parcela = juros_parcela
+        emprestimo.aprovado = True
+        
+        emprestimoSerializer = EmprestimoSerializer(data=dados_emprestimo)
+
+        if emprestimoSerializer.is_valid():
+            emprestimo.save()
+            emprestimo.id_conta.save()
+            return Response(status=status.HTTP_200_OK)
+        else:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+
+
 
 
 

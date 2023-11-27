@@ -20,4 +20,4 @@ class MovimentacaoAdmin(admin.ModelAdmin):
 
 @admin.register(Emprestimo)
 class EmprestimoAdmin(admin.ModelAdmin):
-    list_display = ('data_solicitacao', 'valor_solicitado', 'juros', 'numero_parcela', 'aprovado', 'data_aprovacao', 'observacao')
+    list_display = ('data_solicitacao', 'valor_solicitado', 'juros','quantidade_parcelas', 'valor_parcela', 'aprovado', 'data_aprovacao', 'observacao')
