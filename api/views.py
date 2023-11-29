@@ -154,13 +154,3 @@ class EmprestimoViewSet(viewsets.ModelViewSet):
             return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
-
-
-
-    #  cartao = Cartao(numero=random.randint(1000000000000000,9000000000000000),
-    #                     id_conta=
-    #                     validade=data_criado + delta,
-    #                     bandeira="Mastercard")
-    # fuso_horario = pytz.utc
-    #     delta = timedelta(year=5)
-    #     data_criado = datetime.now(tz=fuso_horario)
