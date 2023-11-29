@@ -1,4 +1,8 @@
 from django.db import models
+from django.contrib.auth.models import User
+from django.dispatch import receiver
+from django.db.models.signals import post_save
+from rest_framework.authtoken.models import Token
 
 class Base(models.Model):
     criacao = models.DateTimeField(auto_now_add=True)
@@ -16,6 +20,7 @@ class Cliente(Base):
     usuario = models.CharField(max_length=20, unique=True)
     senha = models.CharField(max_length=30)
     telefone = models.CharField(max_length=11, unique=True)
+    token = models.CharField(max_length=255, null=True, blank=True)
 
     class Meta:
         verbose_name = 'Cliente'
@@ -24,6 +29,21 @@ class Cliente(Base):
 
     def __str__(self):
         return self.nome
+
+@receiver(post_save, sender=Cliente)
+def create_token_for_user(sender, instance, created, **kwargs):
+    if created:
+        # Criar um usuário associado ao cliente
+        user, created = User.objects.get_or_create(username=instance.usuario)
+        # Você pode definir uma senha padrão ou gerar uma senha aleatória aqui
+        user.set_password(instance.senha)
+        user.save()
+
+        # Criar ou obter um token para o usuário
+        token, created = Token.objects.get_or_create(user=user)
+        instance.token = token.key
+        instance.save()   
+
 
 class Conta(Base):
     id_conta = models.AutoField(primary_key=True)

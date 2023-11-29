@@ -6,6 +6,7 @@ from .serializers import ClienteSerializer, CartaoSerializer, ContaSerializer, E
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 
+
 import random
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
@@ -28,10 +29,12 @@ class ClienteViewSet(viewsets.ModelViewSet):
                           telefone=dados_cliente['telefone'])
 
        
+       
+
         clienteSerializer = ClienteSerializer(many=True, data=dados_cliente)
 
         if clienteSerializer.is_valid():
-
+            
             cliente.save()
 
             conta = Conta(id_cliente=Cliente.objects.get(id_cliente=cliente.id_cliente),
