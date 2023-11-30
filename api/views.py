@@ -32,9 +32,9 @@ class ClienteViewSet(viewsets.ModelViewSet):
             print(cliente)
 
             conta = Conta(id_cliente=ClienteConta.objects.get(id_cliente=cliente.id_cliente),
-                    agencia=random.randint(1000,9000),
-                    conta=random.randint(10000000, 90000000),
-                    saldo=200.00)
+                    agencia=random.randint(1000,9999),
+                    conta=random.randint(10000000, 99999999),
+                    saldo=1000.00)
             
             conta.save()
 
@@ -122,7 +122,7 @@ class EmprestimoViewSet(viewsets.ModelViewSet):
             observacao = dados_emprestimo['observacao']
         )
 
-        if emprestimo.valor_solicitado >= 150*emprestimo.id_conta.saldo:
+        if emprestimo.valor_solicitado >= 15*emprestimo.id_conta.saldo:
             return Response(status=status.HTTP_400_BAD_REQUEST)
         else:
             emprestimo.id_conta.saldo += emprestimo.valor_solicitado
