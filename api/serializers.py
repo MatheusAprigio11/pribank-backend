@@ -26,24 +26,22 @@ class ClienteSerializer(serializers.ModelSerializer):
             'telefone',
         )
 
-class ContaSerializer(serializers.ModelSerializer):
 
-    class Meta:
-
-        model = Conta
-        fields = "__all__"
 
 
 class CartaoSerializer(serializers.ModelSerializer):
+    
 
     class Meta:
 
         model = Cartao
         fields = (
             'id_cartao',
-            'id_conta',
+            'conta',
             'numero',
             'validade',
+            'tipo',
+            'limite',
             'cvv',
             'bandeira',
             'situacao',
@@ -106,3 +104,20 @@ class AvaliacaoCreditoSerializer(serializers.ModelSerializer):
             'permissao',
             'data_solicitacao'
         )
+
+
+class ContaSerializer(serializers.ModelSerializer):
+
+    conta_cartao = CartaoSerializer(read_only=True)
+
+    class Meta:
+
+        model = Conta
+        fields = (
+            'id_conta',
+            'id_cliente',
+            'conta_cartao',
+            'agencia',
+            'conta',
+            'saldo',
+            'ativa')

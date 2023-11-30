@@ -1,6 +1,6 @@
 from django.shortcuts import render
 
-from .models import ClienteConta, Cartao, Conta, Emprestimo, Movimentacao
+from .models import ClienteConta, Cartao, Conta, Emprestimo, Movimentacao, AvaliacaoCredito
 from .serializers import ClienteSerializer, CartaoSerializer, ContaSerializer, EmprestimoSerializer, MovimentacaoSerializer, AvaliacaoCreditoSerializer
 
 from rest_framework import viewsets, status
@@ -43,9 +43,11 @@ class ClienteViewSet(viewsets.ModelViewSet):
             data_criado = datetime.now(tz=fuso_horario)
             data_validade = data_criado + delta
 
-            cartao = Cartao(id_conta=Conta.objects.get(id_conta=conta.id_conta),
+            cartao = Cartao(conta=Conta.objects.get(id_conta=conta.id_conta),
                         numero=random.randint(1000000000000000,9000000000000000),
                         validade=data_validade,
+                        tipo="CD",
+                        limite='0.00',
                         cvv=random.randint(100,999),
                         bandeira="Mastercard"
                     )
@@ -152,21 +154,22 @@ class EmprestimoViewSet(viewsets.ModelViewSet):
         
         
 class AvaliacaoCreditoViewSet(viewsets.ModelViewSet):
-    queryset = AvaliacaoCreditoSerializer.objects.all() #IMPORTAR DO MODELS
+    queryset = AvaliacaoCredito.objects.all() #IMPORTAR DO MODELS
     serializer_class = AvaliacaoCreditoSerializer
     
     def create(self, request, *args, **kwargs):
-        avaliacao = request.data
-        serializer = self.get_serializer(data=avaliacao)
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
         try:
-            avaliacaoCred = serializer.validated_data
-            conta = avaliacaoCred['id_conta']
-            cartao = conta.id_cartao
-            saldo = conta.id_cliente.saldo
+            avaliacao = serializer.validated_data
+            conta = avaliacao['id_conta']
+            cartao = conta.conta_cartao
+            saldo = conta.saldo
             
             self.avaliar_credito(saldo, conta, cartao)
+
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
             
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -178,9 +181,9 @@ class AvaliacaoCreditoViewSet(viewsets.ModelViewSet):
             cartao.tipo = 'CD/CC'
             cartao.save()
             
-            AvaliacaoCreditoSerializer.objects.create(conta=conta, limite=limite, permissao=True)
+            AvaliacaoCredito.objects.create(id_conta=conta, limite=limite, permissao=True)
 
         else:
             cartao.limite = 0.00
             cartao.save()
-            AvaliacaoCreditoSerializer.objects.create(conta=conta, limite=0.00, permissao=False)
+            AvaliacaoCredito.objects.create(id_conta=conta, limite=0.00, permissao=False)

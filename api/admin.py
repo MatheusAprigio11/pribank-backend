@@ -29,7 +29,7 @@ class ClienteAdmin(UserAdmin):
 
 @admin.register(Conta)
 class ContaAdmin(admin.ModelAdmin):
-    list_display = ('agencia', 'conta', 'limite', 'ativa')
+    list_display = ('agencia', 'conta', 'saldo', 'ativa')
 
 @admin.register(Cartao)
 class CartaoAdmin(admin.ModelAdmin):

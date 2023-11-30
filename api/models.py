@@ -121,11 +121,12 @@ class Cartao(Base):
     ]
     
     id_cartao = models.AutoField(primary_key=True)
-    id_conta = models.ForeignKey(Conta, related_name='conta_cartao', on_delete=models.CASCADE)
+    conta = models.OneToOneField(Conta, related_name='conta_cartao', on_delete=models.CASCADE)
     numero = models.CharField(max_length=16)
     validade = models.DateField()
     cvv = models.IntegerField()
     tipo = models.CharField('tipo', max_length=10, choices=TIPO_CHOICES, null=False)
+    limite = models.DecimalField('limite', max_digits=10 ,decimal_places=2 ,blank=True, null=True)
     bandeira = models.CharField(max_length=15)
     situacao = models.BooleanField('Ativo?', default=True)
 
@@ -168,7 +169,7 @@ class Emprestimo(Base):
 
 
 class AvaliacaoCredito(models.Model):
-    id_conta = models.ForeignKey(Conta, related_name="avaliacao_credito_conta",on_delete=models.CASCADE)
+    id_conta = models.ForeignKey(Conta, on_delete=models.CASCADE)
     limite = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     permissao = models.BooleanField(blank=True, null=True)
     data_solicitacao = models.DateTimeField(auto_now_add=True)
@@ -176,3 +177,6 @@ class AvaliacaoCredito(models.Model):
     class Meta:
         verbose_name = 'Avaliacao Credito'
         verbose_name_plural = 'Avaliacoes Credito'
+    
+    def __str__(self):
+        return str(self.permissao)
