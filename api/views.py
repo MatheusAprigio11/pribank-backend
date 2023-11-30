@@ -1,7 +1,7 @@
 from django.shortcuts import render
 
-from .models import Cliente, Cartao, Conta, Emprestimo, Movimentacao
-from .serializers import ClienteSerializer, CartaoSerializer, ContaSerializer, EmprestimoSerializer, MovimentacaoSerializer
+from .models import ClienteConta, Cartao, Conta, Emprestimo, Movimentacao
+from .serializers import ClienteSerializer, CartaoSerializer, ContaSerializer, EmprestimoSerializer, MovimentacaoSerializer, AvaliacaoCreditoSerializer
 
 from rest_framework import viewsets, status
 from rest_framework.response import Response
@@ -16,31 +16,25 @@ from decimal import Decimal
 # Create your views here.
 
 class ClienteViewSet(viewsets.ModelViewSet):
-    queryset = Cliente.objects.all()
+    queryset = ClienteConta.objects.all()
     serializer_class = ClienteSerializer
 
     def create(self, request, *args, **kwargs):
-        dados_cliente = request.data
-        cliente = Cliente(nome=dados_cliente['nome'],
-                          foto=dados_cliente['foto'],
-                          dataNascimento=dados_cliente['dataNascimento'],
-                          usuario=dados_cliente['usuario'],
-                          senha=dados_cliente['senha'],
-                          telefone=dados_cliente['telefone'])
+        cliente = request.data
+        serializer = self.get_serializer(data=cliente)
+        serializer.is_valid(raise_exception=True)
 
        
+        try:
        
-
-        clienteSerializer = ClienteSerializer(many=True, data=dados_cliente)
-
-        if clienteSerializer.is_valid():
+            cliente = serializer.save()
             
-            cliente.save()
+            print(cliente)
 
-            conta = Conta(id_cliente=Cliente.objects.get(id_cliente=cliente.id_cliente),
-                      agencia=random.randint(1000,9000),
-                      conta=random.randint(10000000, 90000000),
-                      limite=200.00)
+            conta = Conta(id_cliente=ClienteConta.objects.get(id_cliente=cliente.id_cliente),
+                    agencia=random.randint(1000,9000),
+                    conta=random.randint(10000000, 90000000),
+                    saldo=200.00)
             
             conta.save()
 
@@ -58,8 +52,11 @@ class ClienteViewSet(viewsets.ModelViewSet):
             
             cartao.save()
 
-            return Response(data=clienteSerializer.data, status=status.HTTP_201_CREATED)
-        return Response(status=status.HTTP_400_BAD_REQUEST)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        
 
 class MovimentacaoViewSet(viewsets.ModelViewSet):
     queryset = Movimentacao.objects.all()
@@ -83,12 +80,12 @@ class MovimentacaoViewSet(viewsets.ModelViewSet):
             movimentacao.id_conta = Conta.objects.get(id_conta=dados_movimentacao['id_conta'])
             movimentacao.id_conta_destino = Conta.objects.get(id_conta=dados_movimentacao['id_conta_destino'])
 
-            if movimentacao.valor >= movimentacao.id_conta.limite:
+            if movimentacao.valor >= movimentacao.id_conta.saldo:
                 return Response(status=status.HTTP_400_BAD_REQUEST)
             else:
                 print("caiu no if de movimentar o saldo")
-                movimentacao.id_conta.limite -=  movimentacao.valor
-                movimentacao.id_conta_destino.limite +=  movimentacao.valor
+                movimentacao.id_conta.saldo -=  movimentacao.valor
+                movimentacao.id_conta_destino.saldo +=  movimentacao.valor
 
             
         movimentacaoSerializer = MovimentacaoSerializer(data=dados_movimentacao)
@@ -123,10 +120,10 @@ class EmprestimoViewSet(viewsets.ModelViewSet):
             observacao = dados_emprestimo['observacao']
         )
 
-        if emprestimo.valor_solicitado >= 150*emprestimo.id_conta.limite:
+        if emprestimo.valor_solicitado >= 150*emprestimo.id_conta.saldo:
             return Response(status=status.HTTP_400_BAD_REQUEST)
         else:
-            emprestimo.id_conta.limite += emprestimo.valor_solicitado
+            emprestimo.id_conta.saldo += emprestimo.valor_solicitado
             if emprestimo.quantidade_parcelas <= 12:
                 emprestimo.juros = Decimal(0.10)
                 
@@ -152,5 +149,38 @@ class EmprestimoViewSet(viewsets.ModelViewSet):
             return Response(status=status.HTTP_200_OK)
         else:
             return Response(status=status.HTTP_400_BAD_REQUEST)
+        
+        
+class AvaliacaoCreditoViewSet(viewsets.ModelViewSet):
+    queryset = AvaliacaoCreditoSerializer.objects.all() #IMPORTAR DO MODELS
+    serializer_class = AvaliacaoCreditoSerializer
+    
+    def create(self, request, *args, **kwargs):
+        avaliacao = request.data
+        serializer = self.get_serializer(data=avaliacao)
+        serializer.is_valid(raise_exception=True)
+        
+        try:
+            avaliacaoCred = serializer.validated_data
+            conta = avaliacaoCred['id_conta']
+            cartao = conta.id_cartao
+            saldo = conta.id_cliente.saldo
+            
+            self.avaliar_credito(saldo, conta, cartao)
+            
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    
+    def avaliar_credito(self, saldo, conta, cartao):
+        if saldo >= 500.00:
+            limite = 0.5*float(saldo)
+            cartao.limite = limite
+            cartao.tipo = 'CD/CC'
+            cartao.save()
+            
+            AvaliacaoCreditoSerializer.objects.create(conta=conta, limite=limite, permissao=True)
 
-
+        else:
+            cartao.limite = 0.00
+            cartao.save()
+            AvaliacaoCreditoSerializer.objects.create(conta=conta, limite=0.00, permissao=False)

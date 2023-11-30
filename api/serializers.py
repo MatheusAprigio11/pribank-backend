@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from django.db.models import Avg
 
-from .models import Cliente, Conta, Cartao, Movimentacao, Emprestimo
+from .models import ClienteConta, Conta, Cartao, Movimentacao, Emprestimo, AvaliacaoCredito
 from django.contrib.auth.hashers import make_password
 
 class ClienteSerializer(serializers.ModelSerializer):
@@ -10,20 +10,20 @@ class ClienteSerializer(serializers.ModelSerializer):
     class Meta:
 
         extra_kwargs = {
-            'senha': {'write_only':True} #NÃO VAI SER APRESENTADO QUANDO ALGUEM CONSULTAR, SERA EXIGIDO APENAS NO CADASTRO.
+            'password': {'write_only':True} #NÃO VAI SER APRESENTADO QUANDO ALGUEM CONSULTAR, SERA EXIGIDO APENAS NO CADASTRO.
         }
 
-        model = Cliente
+        model = ClienteConta
         fields = (
             'id_cliente',
-            'nome',
+            'first_name',
+            'last_name',
             'foto',
+            'cpf',
             'dataNascimento',
-            'usuario',
-            'senha',
+            'username',
+            'password',
             'telefone',
-            'criacao',
-            'atualizacao'
         )
 
 class ContaSerializer(serializers.ModelSerializer):
@@ -94,4 +94,15 @@ class EmprestimoSerializer(serializers.ModelSerializer):
             'observacao',
             'criacao',
             'atualizacao'
+        )
+        
+class AvaliacaoCreditoSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = AvaliacaoCredito
+        fields = (
+            'id_conta',
+            'limite',
+            'permissao',
+            'data_solicitacao'
         )
