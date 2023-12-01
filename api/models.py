@@ -10,21 +10,22 @@ from django.contrib.auth.models import AbstractUser, BaseUserManager, Group, Per
 class ClienteManager(BaseUserManager):
     use_in_migrations = True
     
-    def _create_user(self, username, password, **extra_fields):
-        if not username:
-            raise ValueError('O e-mail é obrigatório')
+    def _create_user(self, cpf, password, **extra_fields):
+        if not cpf:
+            raise ValueError('')
+        print('opaa')
 
-        user = self.model(username=username, **extra_fields)
+        user = self.model(cpf=cpf, **extra_fields)
         user.set_password(password)
         user.save(using=self._db)
         return user
 
-    def create_user(self, username, password=None, **extra_fields):
+    def create_user(self, cpf, password=None, **extra_fields):
         extra_fields.setdefault('is_superuser', False)
         
-        return self._create_user(username, password, **extra_fields)
+        return self._create_user(cpf, password, **extra_fields)
     
-    def create_superuser(self, username, password=None, **extra_fields):
+    def create_superuser(self, cpf, password=None, **extra_fields):
         extra_fields.setdefault('is_superuser', True)
         extra_fields.setdefault('is_staff', True)
         
@@ -33,21 +34,22 @@ class ClienteManager(BaseUserManager):
         if extra_fields.get('is_staff') is not True:
             raise ValueError('Super precisa ter is_staff=True')
         
-        return self._create_user(username, password, **extra_fields)
+        return self._create_user(cpf, password, **extra_fields)
         
 
 
 class ClienteConta(AbstractUser):
     id_cliente = models.AutoField(primary_key=True)
-    foto = models.ImageField(max_length=255)
-    dataNascimento = models.DateField()
+    foto = models.ImageField(max_length=255, null=True, blank=True)
+    dataNascimento = models.DateField(null=True, blank=True)
     cpf = models.CharField(max_length=11, unique=True)
     telefone = models.CharField(max_length=11)
     token = models.CharField(max_length=255, null=True, blank=True)
+    username = models.CharField(max_length=80, unique=False)
 
-    USERNAME_FIELD = 'username'
-    REQUIRED_FIELDS = ['foto', 'first_name', 'last_name', 'cpf', 'telefone', 'dataNascimento']
-
+    USERNAME_FIELD = 'cpf'
+    REQUIRED_FIELDS = ['first_name', 'last_name', 'username', 'telefone', 'dataNascimento']
+    
     groups = models.ManyToManyField(
         Group,
         related_name='clienteconta_groups',
@@ -77,8 +79,9 @@ class ClienteConta(AbstractUser):
 @receiver(post_save, sender=ClienteConta)
 def create_token_for_user(sender, instance, created, **kwargs):
     if created:
+        print(instance)
         # Criar um usuário associado ao cliente
-        user, created = ClienteConta.objects.get_or_create(username=instance.username)
+        user, created = ClienteConta.objects.get_or_create(cpf=instance.cpf)
         # Você pode definir uma senha padrão ou gerar uma senha aleatória aqui
         user.set_password(instance.password)
         user.save()

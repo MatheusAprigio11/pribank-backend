@@ -8,23 +8,33 @@ from django.contrib.auth.hashers import make_password
 class ClienteSerializer(serializers.ModelSerializer):
 
     class Meta:
+        print('meta')
 
         extra_kwargs = {
             'password': {'write_only':True} #NÃO VAI SER APRESENTADO QUANDO ALGUEM CONSULTAR, SERA EXIGIDO APENAS NO CADASTRO.
         }
 
         model = ClienteConta
-        fields = (
-            'id_cliente',
-            'first_name',
-            'last_name',
-            'foto',
-            'cpf',
-            'dataNascimento',
-            'username',
-            'password',
-            'telefone',
+        fields = '__all__'
+        
+        
+    def create(self, validated_data):
+        cliente = ClienteConta(
+            foto = validated_data['foto'],
+            cpf=validated_data['cpf'],
+            password=validated_data['password'],
+            dataNascimento = validated_data['dataNascimento'],
+            telefone = validated_data['telefone'],
+            username = validated_data['username'],
+            first_name = validated_data['first_name'],
+            last_name = validated_data['last_name']
         )
+        
+
+
+        cliente.set_password(validated_data['password'])
+        cliente.save()
+        return cliente
 
 
 
@@ -109,6 +119,7 @@ class AvaliacaoCreditoSerializer(serializers.ModelSerializer):
 class ContaSerializer(serializers.ModelSerializer):
 
     conta_cartao = CartaoSerializer(read_only=True)
+    id_cliente = ClienteSerializer(read_only=True)
 
     class Meta:
 

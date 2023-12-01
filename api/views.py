@@ -11,15 +11,22 @@ import random
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 import pytz
+from rest_framework.exceptions import ValidationError
 from decimal import Decimal
+from rest_framework.views import APIView
+
 
 # Create your views here.
+
+
+
 
 class ClienteViewSet(viewsets.ModelViewSet):
     queryset = ClienteConta.objects.all()
     serializer_class = ClienteSerializer
 
     def create(self, request, *args, **kwargs):
+        print('olaaa')
         cliente = request.data
         serializer = self.get_serializer(data=cliente)
         serializer.is_valid(raise_exception=True)
@@ -59,6 +66,9 @@ class ClienteViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         
+
+
+
 
 class MovimentacaoViewSet(viewsets.ModelViewSet):
     queryset = Movimentacao.objects.all()
@@ -106,6 +116,16 @@ class CartaoViewSet(viewsets.ModelViewSet):
 class ContaViewSet(viewsets.ModelViewSet):
     queryset = Conta.objects.all()
     serializer_class = ContaSerializer
+    
+    
+    def get_queryset(self):
+        cliente = ClienteConta.objects.filter(cpf=self.request.user.cpf).first()
+        conta = Conta.objects.filter(id_cliente=cliente).first()
+        print(cliente.id_cliente)
+        if cliente:
+            return [conta]
+        else: 
+            raise ValidationError(detail='Esse cliente não existe')
 
 
 class EmprestimoViewSet(viewsets.ModelViewSet):
@@ -114,6 +134,8 @@ class EmprestimoViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         dados_emprestimo = request.data
+        print(dados_emprestimo['id_conta'])
+        print(Conta.objects.filter(id_conta=dados_emprestimo['id_conta']).first())
 
         emprestimo = Emprestimo(
             id_conta=Conta.objects.get(id_conta=dados_emprestimo['id_conta']),
@@ -121,6 +143,8 @@ class EmprestimoViewSet(viewsets.ModelViewSet):
             quantidade_parcelas = int(dados_emprestimo['quantidade_parcelas']),
             observacao = dados_emprestimo['observacao']
         )
+
+
 
         if emprestimo.valor_solicitado >= 15*emprestimo.id_conta.saldo:
             return Response(status=status.HTTP_400_BAD_REQUEST)
@@ -148,7 +172,7 @@ class EmprestimoViewSet(viewsets.ModelViewSet):
         if emprestimoSerializer.is_valid():
             emprestimo.save()
             emprestimo.id_conta.save()
-            return Response(status=status.HTTP_200_OK)
+            return Response(emprestimoSerializer.data, status=status.HTTP_200_OK)
         else:
             return Response(status=status.HTTP_400_BAD_REQUEST)
         
