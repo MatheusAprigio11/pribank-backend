@@ -7,6 +7,7 @@ from rest_framework import viewsets, status
 from rest_framework.response import Response
 
 
+
 import random
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
@@ -76,38 +77,58 @@ class MovimentacaoViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         dados_movimentacao = request.data
+        cliente = ClienteConta.objects.filter(cpf=dados_movimentacao["cpf"]).first()
+        print(cliente)
+        conta = Conta.objects.filter(id_cliente=cliente).first()
+        print(conta.id_conta)
+        
+        user = self.request.user
+        print(user)
+        
+        if conta:
+            movimentacao = Movimentacao(
+                valor = Decimal(dados_movimentacao['valor']),
+                tipo = dados_movimentacao['tipo']
+            )
 
-        movimentacao = Movimentacao(
-            valor = Decimal(dados_movimentacao['valor']),
-            tipo = dados_movimentacao['tipo']
-        )
-
-        if movimentacao.id_cartao is not None:
-            print("entrou no primeiro if")
-            movimentacao.id_cartao = dados_movimentacao['id_cartao']
-            movimentacao.id_conta = None
-            movimentacao.id_conta_destino = None
-        else:
-            print("entrou no else")
-            movimentacao.id_conta = Conta.objects.get(id_conta=dados_movimentacao['id_conta'])
-            movimentacao.id_conta_destino = Conta.objects.get(id_conta=dados_movimentacao['id_conta_destino'])
+            if movimentacao.id_cartao is not None:
+                print("entrou no primeiro if")
+                movimentacao.id_cartao = dados_movimentacao['id_cartao']
+            
+            movimentacao.id_conta = Conta.objects.get(id_cliente=user)
+            movimentacao.id_conta_destino = conta
 
             if movimentacao.valor >= movimentacao.id_conta.saldo:
-                return Response(status=status.HTTP_400_BAD_REQUEST)
-            else:
-                print("caiu no if de movimentar o saldo")
-                movimentacao.id_conta.saldo -=  movimentacao.valor
-                movimentacao.id_conta_destino.saldo +=  movimentacao.valor
-
-            
-        movimentacaoSerializer = MovimentacaoSerializer(data=dados_movimentacao)
-        if movimentacaoSerializer.is_valid():
-            movimentacao.save()
-            movimentacao.id_conta.save()
-            movimentacao.id_conta_destino.save()    
-            return Response(status=status.HTTP_200_OK)
+                print('bad rqs')
+                return Response({"message": "saldo insuficiente"},status=status.HTTP_400_BAD_REQUEST)
         
-
+            print("caiu no if de movimentar o saldo")
+            movimentacao.id_conta.saldo -=  movimentacao.valor
+            movimentacao.id_conta_destino.saldo +=  movimentacao.valor
+            
+            
+                
+            movimentacaoSerializer = MovimentacaoSerializer(data=movimentacao)
+            if movimentacaoSerializer.is_valid():
+                movimentacao.save()
+                movimentacao.id_conta.save()
+                movimentacao.id_conta_destino.save()    
+                print('retorno')
+                return Response(MovimentacaoSerializer(movimentacao).data, status=status.HTTP_201_CREATED)
+        else:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+            
+    def get_queryset(self):
+        conta = Conta.objects.filter(id_cliente=self.request.user).first()
+        
+        movimentacao = Movimentacao.objects.filter(id_conta=conta)
+        print(movimentacao)
+        if movimentacao:
+            return movimentacao
+        else: 
+            raise ValidationError(detail='Não existe movimentação nessa conta')
+    
+    
 class CartaoViewSet(viewsets.ModelViewSet):
     queryset = Cartao.objects.all()
     serializer_class = CartaoSerializer
@@ -134,47 +155,39 @@ class EmprestimoViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         dados_emprestimo = request.data
-        print(dados_emprestimo['id_conta'])
-        print(Conta.objects.filter(id_conta=dados_emprestimo['id_conta']).first())
 
         emprestimo = Emprestimo(
             id_conta=Conta.objects.get(id_conta=dados_emprestimo['id_conta']),
-            valor_solicitado = Decimal(dados_emprestimo['valor_solicitado']),
-            quantidade_parcelas = int(dados_emprestimo['quantidade_parcelas']),
-            observacao = dados_emprestimo['observacao']
+            valor_solicitado=Decimal(dados_emprestimo['valor_solicitado']),
+            quantidade_parcelas=int(dados_emprestimo['quantidade_parcelas']),
+            observacao=dados_emprestimo['observacao']
         )
 
+        if emprestimo.valor_solicitado >= 15 * emprestimo.id_conta.saldo:
+            return Response({"message": "Valor do empréstimo excede o saldo disponível."}, status=status.HTTP_400_BAD_REQUEST)
 
+        self._calcular_juros(emprestimo)
 
-        if emprestimo.valor_solicitado >= 15*emprestimo.id_conta.saldo:
-            return Response(status=status.HTTP_400_BAD_REQUEST)
-        else:
-            emprestimo.id_conta.saldo += emprestimo.valor_solicitado
-            if emprestimo.quantidade_parcelas <= 12:
-                emprestimo.juros = Decimal(0.10)
-                
-            elif emprestimo.quantidade_parcelas <= 24:
-                emprestimo.juros = Decimal(0.15)
-
-            elif emprestimo.quantidade_parcelas <= 36:
-                emprestimo.juros = Decimal(0.20)
-                
-        parcela = emprestimo.valor_solicitado/emprestimo.quantidade_parcelas
-
-        juros_parcela = parcela*emprestimo.juros
-        juros_parcela += parcela
-
-        emprestimo.valor_parcela = juros_parcela
         emprestimo.aprovado = True
-        
-        emprestimoSerializer = EmprestimoSerializer(data=dados_emprestimo)
+        emprestimo.save()
 
-        if emprestimoSerializer.is_valid():
-            emprestimo.save()
-            emprestimo.id_conta.save()
-            return Response(emprestimoSerializer.data, status=status.HTTP_200_OK)
-        else:
-            return Response(status=status.HTTP_400_BAD_REQUEST)
+        return Response(EmprestimoSerializer(emprestimo).data, status=status.HTTP_200_OK)
+
+    def _calcular_juros(self, emprestimo):
+        if emprestimo.quantidade_parcelas <= 12:
+            emprestimo.juros = Decimal(0.10)
+        elif emprestimo.quantidade_parcelas <= 24:
+            emprestimo.juros = Decimal(0.15)
+        elif emprestimo.quantidade_parcelas <= 36:
+            emprestimo.juros = Decimal(0.20)
+
+        parcela = emprestimo.valor_solicitado / emprestimo.quantidade_parcelas
+        juros_parcela = parcela * emprestimo.juros
+        emprestimo.valor_parcela = parcela + juros_parcela
+        
+        
+
+    
         
         
 class AvaliacaoCreditoViewSet(viewsets.ModelViewSet):

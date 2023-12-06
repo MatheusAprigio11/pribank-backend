@@ -3,7 +3,8 @@ from django.contrib.auth.models import User
 from django.dispatch import receiver
 from django.db.models.signals import post_save
 from rest_framework.authtoken.models import Token
-
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 from django.contrib.auth.models import AbstractUser, BaseUserManager, Group, Permission
 
 
@@ -101,6 +102,9 @@ class Base(models.Model):
         abstract = True
 
 
+
+
+
 class Conta(Base):
     
     id_conta = models.AutoField(primary_key=True)
@@ -183,3 +187,15 @@ class AvaliacaoCredito(models.Model):
     
     def __str__(self):
         return str(self.permissao)
+    
+    
+@receiver(post_save, sender=Emprestimo)
+def criar_movimentacao_apos_salvar_emprestimo(sender, instance, **kwargs):
+    if kwargs.get('created', False):
+        print('criei a mov')
+        movimentacao = Movimentacao.objects.create(
+            id_conta=instance.id_conta,
+            valor=instance.valor_solicitado,
+            tipo="emprestimo"
+        )
+        movimentacao.save()
