@@ -1,4 +1,5 @@
 from django.shortcuts import render
+from django.db.models import Q
 
 from .models import ClienteConta, Cartao, Conta, Emprestimo, Movimentacao, AvaliacaoCredito
 from .serializers import ClienteSerializer, CartaoSerializer, ContaSerializer, EmprestimoSerializer, MovimentacaoSerializer, AvaliacaoCreditoSerializer
@@ -68,7 +69,15 @@ class ClienteViewSet(viewsets.ModelViewSet):
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         
 
-
+class ClienteContaView(viewsets.ModelViewSet):
+    queryset = ClienteConta.objects.all()
+    serializer_class = ClienteSerializer
+    
+    def get_queryset(self):
+        cliente_destino = self.request.query_params.get('search')
+        if cliente_destino:
+            filters = ClienteConta.objects.filter(Q(cpf__icontains=cliente_destino)).distinct()
+            return filters
 
 
 class MovimentacaoViewSet(viewsets.ModelViewSet):
@@ -105,16 +114,13 @@ class MovimentacaoViewSet(viewsets.ModelViewSet):
             print("caiu no if de movimentar o saldo")
             movimentacao.id_conta.saldo -=  movimentacao.valor
             movimentacao.id_conta_destino.saldo +=  movimentacao.valor
-            
-            
                 
             movimentacaoSerializer = MovimentacaoSerializer(data=movimentacao)
-            if movimentacaoSerializer.is_valid():
-                movimentacao.save()
-                movimentacao.id_conta.save()
-                movimentacao.id_conta_destino.save()    
-                print('retorno')
-                return Response(MovimentacaoSerializer(movimentacao).data, status=status.HTTP_201_CREATED)
+            movimentacao.save()
+            movimentacao.id_conta.save()
+            movimentacao.id_conta_destino.save()    
+            print('retorno')
+            return Response(MovimentacaoSerializer(movimentacao).data, status=status.HTTP_201_CREATED)
         else:
             return Response(status=status.HTTP_400_BAD_REQUEST)
             
@@ -224,3 +230,4 @@ class AvaliacaoCreditoViewSet(viewsets.ModelViewSet):
             cartao.limite = 0.00
             cartao.save()
             AvaliacaoCredito.objects.create(id_conta=conta, limite=0.00, permissao=False)
+            
