@@ -11,7 +11,7 @@ class ClienteSerializer(serializers.ModelSerializer):
         print('meta')
 
         extra_kwargs = {
-            'password': {'write_only':True} #NÃO VAI SER APRESENTADO QUANDO ALGUEM CONSULTAR, SERA EXIGIDO APENAS NO CADASTRO.
+            'password': {'write_only':True}
         }
 
         model = ClienteConta
