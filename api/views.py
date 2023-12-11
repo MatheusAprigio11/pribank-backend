@@ -6,7 +6,7 @@ from .serializers import ClienteSerializer, CartaoSerializer, ContaSerializer, E
 
 from rest_framework import viewsets, status
 from rest_framework.response import Response
-
+from rest_framework.permissions import AllowAny
 
 
 import random
@@ -26,6 +26,7 @@ from rest_framework.views import APIView
 class ClienteViewSet(viewsets.ModelViewSet):
     queryset = ClienteConta.objects.all()
     serializer_class = ClienteSerializer
+    permission_classes = [AllowAny]
 
     def create(self, request, *args, **kwargs):
         print('olaaa')
